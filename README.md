@@ -26,64 +26,47 @@ Finanza/
 │  ├─ actions.js              Acciones: dataService + estado
 │  ├─ state.js                Única fuente de verdad (+ subscribe)
 │  ├─ constants.js            Secciones, tipos, filtros, tamaños de tabla
-│  ├─ config.js               dataMode: "mock" | "api"
+│  ├─ config.js               dataMode: "api" (por defecto) | "mock"
 │  ├─ domain/                 Cálculos, filtros y validaciones puras
 │  ├─ components/             Modal, toast, gráficos SVG, helpers de forms
 │  ├─ modules/                Dashboard, movimientos, análisis, categorías,
 │  │                          ingreso y gasto (individual/masivo)
 │  ├─ services/
 │  │  ├─ dataService.js       Selector: mock o API según config.js
-│  │  ├─ mockDataService.js   Datos ficticios en memoria (fase actual)
+│  │  ├─ mockDataService.js   Datos ficticios en memoria (demo, ?data=mock)
 │  │  └─ apiDataService.js    Cliente HTTP hacia el backend
-│  └─ data/mockData.js        ÚNICA fuente de datos ficticios (144 movimientos)
-├─ db/                        schema.sql, seed.sql, queries.sql (PostgreSQL)
+│  └─ data/mockData.js        Datos ficticios solo para el modo demo
+├─ db/                        schema.sql (esquema en español), queries.sql
 └─ server/                    Backend: Express + pg (Node ≥ 18)
 ```
 
 ***La UI nunca importa `mockData.js` ni toca PostgreSQL directamente.*** Todo pasa por `services/dataService.js`.
 
-## Ejecutar (capa de datos mock — fase actual)
+## Ejecutar (vinculado a PostgreSQL)
 
-Los ES Modules requieren un servidor HTTP (no sirve abrir el archivo con doble clic):
+1. Ejecuta `db/schema.sql` **una sola vez** en tu base de datos
+   (solo estructura, todo en español: copiar y pegar completo en
+   psql, pgAdmin o DBeaver). Los datos se insertan manualmente;
+   al final del archivo hay ejemplos de `INSERT`.
 
-```powershell
-cd Finanza
-python -m http.server 5500
-```
+2. Arranca el backend (sirve frontend + API en el mismo origen):
 
-Abre `http://localhost:5500`. Verás en la consola:
-`[finanza] Listo -> 144 movimientos, 12 categorías, 2 métodos de pago.`
+   ```powershell
+   cd server
+   npm install      # solo la primera vez
+   npm start
+   ```
+
+3. Abre `http://localhost:3000`. La app usa **PostgreSQL por defecto**;
+   la conexión está en `server/.env` (`DATABASE_URL`).
+
+### Modo demo (datos ficticios, sin base de datos)
+
+`http://localhost:3000/?data=mock`
 
 ### Exposiciones de desarrollo
 
 - Consola: `window.finanza.state.getState()`, `.setState(...)`, `.subscribe(fn)` y `window.finanza.dataService`.
-
-## Activar PostgreSQL (fase final, opcional)
-
-1. Crea la base de datos y aplica esquema + semilla:
-
-   ```powershell
-   createdb finanza
-   psql -d finanza -f db/schema.sql
-   psql -d finanza -f db/seed.sql
-   ```
-
-2. Instala y arranca el backend:
-
-   ```powershell
-   cd server
-   Copy-Item .env.example .env   # edita DATABASE_URL si es necesario
-   npm install
-   npm start
-   ```
-
-3. Entra a la app con la API activa (sirve frontend + API en el mismo origen):
-
-   ```
-   http://localhost:3000/?data=api
-   ```
-
-Sin `?data=api` la app vuelve a los datos mock. `localhost:3000` es servido por Express; si prefieres el servidor de Python, usa CORS configurado (el backend lo habilita).
 
 ## Endpoints de la API
 
@@ -102,12 +85,18 @@ Sin `?data=api` la app vuelve a los datos mock. `localhost:3000` es servido por 
 | GET    | `/api/payment-methods`          | Lista métodos de pago        |
 | POST   | `/api/payment-methods`          | Crea un método               |
 
-`GET /api/subcategories?categoryId=cat-food` filtra por categoría.
+`GET /api/subcategories?categoryId=1` filtra por categoría.
+
+## Datos
+
+`db/schema.sql` solo crea la estructura; las inserciones se hacen
+manualmente (hay ejemplos de `INSERT` al final del archivo). Los valores
+de `tipo` son `'INGRESO' | 'GASTO'`; el backend los traduce al contrato
+en inglés/camelCase que consume el frontend.
 
 ## Verificación automatizada
 
 ```powershell
 # Herramienta: C:\Users\huama\AppData\Local\Temp\opencode\finanza-check
 node check.js      # datos mock: conteos, totales, CRUD, filtros, validación
-node gen-seed.js   # regenera db/seed.sql desde js/data/mockData.js
 ```

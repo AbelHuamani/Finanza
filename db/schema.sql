@@ -1,103 +1,77 @@
--- ============================================================
---  Finanza · Esquema PostgreSQL
---  Ejecutar:  psql "$DATABASE_URL" -f db/schema.sql
--- ============================================================
+DROP TABLE IF EXISTS movimientos CASCADE;
+DROP TABLE IF EXISTS subcategorias CASCADE;
+DROP TABLE IF EXISTS metodos_pago CASCADE;
+DROP TABLE IF EXISTS categorias CASCADE;
 
-BEGIN;
+-- ------------------------------------------------------------
+--  Tablas (id entero autoincremental)
+-- ------------------------------------------------------------
 
-DROP TABLE IF EXISTS movements CASCADE;
-DROP TABLE IF EXISTS subcategories CASCADE;
-DROP TABLE IF EXISTS payment_methods CASCADE;
-DROP TABLE IF EXISTS categories CASCADE;
-
-CREATE TABLE categories (
-    id          text PRIMARY KEY,
-    name        text NOT NULL UNIQUE,
-    type        text NOT NULL DEFAULT 'EXPENSE' CHECK (type IN ('INCOME', 'EXPENSE')),
-    active      boolean NOT NULL DEFAULT true,
-    created_at  timestamptz NOT NULL DEFAULT now()
+CREATE TABLE categorias (
+    id         integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre     text NOT NULL UNIQUE,
+    creado_en  timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE subcategories (
-    id          text PRIMARY KEY,
-    category_id text NOT NULL REFERENCES categories (id) ON DELETE CASCADE,
-    name        text NOT NULL,
-    active      boolean NOT NULL DEFAULT true,
-    created_at  timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (category_id, name)
+CREATE TABLE subcategorias (
+    id            integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    categoria_id  integer NOT NULL REFERENCES categorias (id) ON DELETE CASCADE,
+    nombre        text NOT NULL,
+    creado_en     timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (categoria_id, nombre)
 );
 
-CREATE TABLE payment_methods (
-    id          text PRIMARY KEY,
-    name        text NOT NULL UNIQUE,
-    active      boolean NOT NULL DEFAULT true,
-    created_at  timestamptz NOT NULL DEFAULT now()
+CREATE TABLE metodos_pago (
+    id         integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre     text NOT NULL UNIQUE,
+    creado_en  timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE movements (
-    id             text PRIMARY KEY,
-    type           text NOT NULL CHECK (type IN ('INCOME', 'EXPENSE')),
-    date           date NOT NULL,
-    amount         numeric(12, 2) NOT NULL CHECK (amount > 0),
-    category_id    text REFERENCES categories (id) ON DELETE RESTRICT,
-    subcategory_id text REFERENCES subcategories (id) ON DELETE SET NULL,
-    description    text NOT NULL DEFAULT '',
-    payment_method text REFERENCES payment_methods (id) ON DELETE RESTRICT,
-    note           text NOT NULL DEFAULT '',
-    created_at     timestamptz NOT NULL DEFAULT now(),
-    updated_at     timestamptz NOT NULL DEFAULT now(),
+CREATE TABLE movimientos (
+    id               integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tipo             text NOT NULL CHECK (tipo IN ('INGRESO', 'GASTO')),
+    fecha            date NOT NULL,
+    monto            numeric(12, 2) NOT NULL CHECK (monto > 0),
+    categoria_id     integer REFERENCES categorias (id) ON DELETE RESTRICT,
+    subcategoria_id  integer REFERENCES subcategorias (id) ON DELETE SET NULL,
+    descripcion      text NOT NULL DEFAULT '',
+    metodo_pago      integer REFERENCES metodos_pago (id) ON DELETE RESTRICT,
+    nota             text NOT NULL DEFAULT '',
+    creado_en        timestamptz NOT NULL DEFAULT now(),
+    actualizado_en   timestamptz NOT NULL DEFAULT now(),
     -- Un ingreso no tiene categoría, subcategoría ni método de pago.
-    CONSTRAINT movements_income_shape CHECK (
-        type = 'EXPENSE'
-        OR (category_id IS NULL AND subcategory_id IS NULL AND payment_method IS NULL)
+    CONSTRAINT movimientos_forma_ingreso CHECK (
+        tipo = 'GASTO'
+        OR (categoria_id IS NULL AND subcategoria_id IS NULL AND metodo_pago IS NULL)
     ),
     -- Un gasto siempre tiene categoría y método de pago.
-    CONSTRAINT movements_expense_shape CHECK (
-        type = 'INCOME'
-        OR (category_id IS NOT NULL AND payment_method IS NOT NULL)
+    CONSTRAINT movimientos_forma_gasto CHECK (
+        tipo = 'INGRESO'
+        OR (categoria_id IS NOT NULL AND metodo_pago IS NOT NULL)
     )
 );
 
-CREATE INDEX movements_date_idx ON movements (date DESC);
-CREATE INDEX movements_type_idx ON movements (type);
-CREATE INDEX movements_category_idx ON movements (category_id);
-CREATE INDEX movements_payment_idx ON movements (payment_method);
-CREATE INDEX subcategories_category_idx ON subcategories (category_id);
+CREATE INDEX movimientos_fecha_idx ON movimientos (fecha DESC);
+CREATE INDEX movimientos_tipo_idx ON movimientos (tipo);
+CREATE INDEX movimientos_categoria_idx ON movimientos (categoria_id);
+CREATE INDEX movimientos_metodo_idx ON movimientos (metodo_pago);
+CREATE INDEX subcategorias_categoria_idx ON subcategorias (categoria_id);
 
--- updated_at automático
-CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
+-- actualizado_en automático
+CREATE OR REPLACE FUNCTION fijar_actualizado_en() RETURNS trigger AS $$
 BEGIN
-    NEW.updated_at = now();
+    NEW.actualizado_en = now();
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER movements_updated_at
-    BEFORE UPDATE ON movements
+CREATE TRIGGER movimientos_actualizado_en
+    BEFORE UPDATE ON movimientos
     FOR EACH ROW
-    EXECUTE FUNCTION set_updated_at();
+    EXECUTE FUNCTION fijar_actualizado_en();
 
--- ------------------------------------------------------------
---  Generadores de id con el mismo formato que el frontend
---  (mov-145, cat-013, sub-016, pm-003).
--- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION next_id(prefix text, source text) RETURNS text AS $$
-DECLARE
-    max_num integer;
-BEGIN
-    EXECUTE format(
-        'SELECT COALESCE(MAX((substring(id FROM %L))::int) FILTER (WHERE id ~ %L), 0) FROM %I',
-        '^' || prefix || '-([0-9]+)$',
-        '^' || prefix || '-[0-9]+$',
-        source
-    ) INTO max_num;
-    RETURN prefix || '-' || lpad((max_num + 1)::text, 3, '0');
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION next_movement_id() RETURNS text AS $$ SELECT next_id('mov', 'movements'); $$ LANGUAGE sql;
-CREATE OR REPLACE FUNCTION next_category_id() RETURNS text AS $$ SELECT next_id('cat', 'categories'); $$ LANGUAGE sql;
-CREATE OR REPLACE FUNCTION next_subcategory_id() RETURNS text AS $$ SELECT next_id('sub', 'subcategories'); $$ LANGUAGE sql;
-CREATE OR REPLACE FUNCTION next_payment_method_id() RETURNS text AS $$ SELECT next_id('pm', 'payment_methods'); $$ LANGUAGE sql;
-
-COMMIT;
+INSERT INTO metodos_pago (nombre) 
+VALUES 
+    ('Efectivo'),
+    ('Yape');
+    

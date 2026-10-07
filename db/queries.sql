@@ -1,88 +1,87 @@
 -- ============================================================
---  Finanza · Consultas parametrizadas usadas por server/repositories.js
+--  Finanza · Consultas en español usadas por server/repositories.js
 --  Referencia/documentación: no se ejecuta de forma autónoma.
+--  El esquema y los datos se crean con db/schema.sql.
 -- ============================================================
 
 -- ------------------------ Movimientos ------------------------
 
--- name: listMovements
-SELECT id, type, to_char(date, 'YYYY-MM-DD') AS date, amount,
-       category_id, subcategory_id, description, payment_method, note,
-       created_at, updated_at
-FROM movements
-ORDER BY date DESC, created_at DESC;
+-- nombre: listarMovimientos
+SELECT id, tipo, to_char(fecha, 'YYYY-MM-DD') AS fecha, monto,
+       categoria_id, subcategoria_id, descripcion, metodo_pago, nota,
+       creado_en, actualizado_en
+FROM movimientos
+ORDER BY fecha DESC, creado_en DESC;
 
--- name: getMovement
-SELECT id, type, to_char(date, 'YYYY-MM-DD') AS date, amount,
-       category_id, subcategory_id, description, payment_method, note,
-       created_at, updated_at
-FROM movements
+-- nombre: obtenerMovimiento
+SELECT id, tipo, to_char(fecha, 'YYYY-MM-DD') AS fecha, monto,
+       categoria_id, subcategoria_id, descripcion, metodo_pago, nota,
+       creado_en, actualizado_en
+FROM movimientos
 WHERE id = $1;
 
--- name: insertMovement
-INSERT INTO movements
-    (id, type, date, amount, category_id, subcategory_id, description, payment_method, note)
+-- nombre: insertarMovimiento
+INSERT INTO movimientos
+    (tipo, fecha, monto, categoria_id, subcategoria_id, descripcion, metodo_pago, nota)
 VALUES
-    (next_movement_id(), $1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, type, to_char(date, 'YYYY-MM-DD') AS date, amount,
-          category_id, subcategory_id, description, payment_method, note,
-          created_at, updated_at;
+    ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, tipo, to_char(fecha, 'YYYY-MM-DD') AS fecha, monto,
+          categoria_id, subcategoria_id, descripcion, metodo_pago, nota,
+          creado_en, actualizado_en;
 
--- name: bulkInsertMovements
--- Implementación: un insertMovement por fila, dentro de una transacción.
--- (generar ids con generate_series repite el mismo id en cada fila, por eso
---  se inserta fila por fila usando next_movement_id()).
+-- nombre: insertarMovimientosMasivo
+-- Implementación: un insertarMovimiento por fila, dentro de una transacción.
 
--- name: updateMovement
-UPDATE movements
-SET type = $2,
-    date = $3,
-    amount = $4,
-    category_id = $5,
-    subcategory_id = $6,
-    description = $7,
-    payment_method = $8,
-    note = $9
+-- nombre: actualizarMovimiento
+UPDATE movimientos
+SET tipo = $2,
+    fecha = $3,
+    monto = $4,
+    categoria_id = $5,
+    subcategoria_id = $6,
+    descripcion = $7,
+    metodo_pago = $8,
+    nota = $9
 WHERE id = $1
-RETURNING id, type, to_char(date, 'YYYY-MM-DD') AS date, amount,
-          category_id, subcategory_id, description, payment_method, note,
-          created_at, updated_at;
+RETURNING id, tipo, to_char(fecha, 'YYYY-MM-DD') AS fecha, monto,
+          categoria_id, subcategoria_id, descripcion, metodo_pago, nota,
+          creado_en, actualizado_en;
 
--- name: deleteMovement
-DELETE FROM movements WHERE id = $1 RETURNING id;
+-- nombre: eliminarMovimiento
+DELETE FROM movimientos WHERE id = $1 RETURNING id;
 
 -- ------------------------ Categorías ------------------------
 
--- name: listCategories
-SELECT id, name, type, active, created_at FROM categories ORDER BY name;
+-- nombre: listarCategorias
+SELECT id, nombre, creado_en FROM categorias ORDER BY nombre;
 
--- name: insertCategory
-INSERT INTO categories (id, name, type, active)
-VALUES (next_category_id(), $1, COALESCE($2, 'EXPENSE'), COALESCE($3, true))
-RETURNING id, name, type, active, created_at;
+-- nombre: insertarCategoria
+INSERT INTO categorias (nombre)
+VALUES ($1)
+RETURNING id, nombre, creado_en;
 
 -- ------------------------ Subcategorías ------------------------
 
--- name: listSubcategories
-SELECT id, category_id, name, active, created_at FROM subcategories ORDER BY name;
+-- nombre: listarSubcategorias
+SELECT id, categoria_id, nombre, creado_en FROM subcategorias ORDER BY nombre;
 
--- name: listSubcategoriesByCategory
-SELECT id, category_id, name, active, created_at
-FROM subcategories
-WHERE category_id = $1
-ORDER BY name;
+-- nombre: listarSubcategoriasPorCategoria
+SELECT id, categoria_id, nombre, creado_en
+FROM subcategorias
+WHERE categoria_id = $1
+ORDER BY nombre;
 
--- name: insertSubcategory
-INSERT INTO subcategories (id, category_id, name, active)
-VALUES (next_subcategory_id(), $1, $2, COALESCE($3, true))
-RETURNING id, category_id, name, active, created_at;
+-- nombre: insertarSubcategoria
+INSERT INTO subcategorias (categoria_id, nombre)
+VALUES ($1, $2)
+RETURNING id, categoria_id, nombre, creado_en;
 
 -- ------------------------ Métodos de pago ------------------------
 
--- name: listPaymentMethods
-SELECT id, name, active, created_at FROM payment_methods ORDER BY name;
+-- nombre: listarMetodosPago
+SELECT id, nombre, creado_en FROM metodos_pago ORDER BY nombre;
 
--- name: insertPaymentMethod
-INSERT INTO payment_methods (id, name, active)
-VALUES (next_payment_method_id(), $1, COALESCE($2, true))
-RETURNING id, name, active, created_at;
+-- nombre: insertarMetodoPago
+INSERT INTO metodos_pago (nombre)
+VALUES ($1)
+RETURNING id, nombre, creado_en;

@@ -2,15 +2,15 @@
  * Configuración de la aplicación.
  *
  * dataMode determina la capa de datos:
- *   - "mock": datos ficticios en memoria (fase actual).
- *   - "api" : backend/API -> PostgreSQL (fase final).
+ *   - "api" : backend/API -> PostgreSQL (por defecto, vinculado).
+ *   - "mock": datos ficticios en memoria (solo demostración).
  *
- * Se puede forzar por URL:  index.html?data=api
+ * Se puede forzar por URL:  index.html?data=mock
  * o recordarlo en localStorage con la clave "finanza:dataMode".
  */
 
 function detectDataMode() {
-    if (typeof window === "undefined") return "mock";
+    if (typeof window === "undefined") return "api";
     try {
         const params = new URLSearchParams(window.location.search);
         const fromUrl = params.get("data");
@@ -20,7 +20,7 @@ function detectDataMode() {
     } catch {
         /* localStorage no disponible */
     }
-    return "mock";
+    return "api";
 }
 
 export const config = {
