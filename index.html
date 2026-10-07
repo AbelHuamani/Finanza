@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#3757d6" />
+    <meta name="description" content="Aplicación personal para gestionar ingresos, gastos, balance y ahorro." />
+    <title>Finanza — Dashboard</title>
+
+    <link rel="stylesheet" href="css/reset.css" />
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+    <a class="skip-link" href="#main">Saltar al contenido</a>
+
+    <div class="app">
+        <header class="topbar">
+            <a class="brand" href="#dashboard" aria-label="Finanza — ir al inicio">
+                <span class="brand__mark" aria-hidden="true">S/</span>
+                <span class="brand__name">Finanza</span>
+            </a>
+
+            <div class="topbar__heading">
+                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                <p class="page-subtitle" id="pageSubtitle">Resumen de tus finanzas</p>
+            </div>
+
+            <div class="topbar__actions">
+                <button class="btn btn--ghost action-desktop" type="button" data-action="new-income">
+                    <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4" /><path d="M5 20h14" /></svg>
+                    <span>Ingreso</span>
+                </button>
+                <button class="btn btn--ghost action-desktop" type="button" data-action="new-expense">
+                    <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V8m0 0 4 4m-4-4-4 4" /><path d="M5 4h14" /></svg>
+                    <span>Gasto</span>
+                </button>
+                <button class="btn btn--primary action-desktop" type="button" data-action="new-bulk-expense">
+                    <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></svg>
+                    <span>Gasto masivo</span>
+                </button>
+
+                <button class="btn btn--primary btn--icon actions-toggle" type="button" data-toggle-actions aria-label="Registrar movimiento" aria-expanded="false" aria-controls="actionMenu">
+                    <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                </button>
+            </div>
+        </header>
+
+        <nav class="nav" aria-label="Navegación principal">
+            <ul class="nav__list" role="list">
+                <li class="nav__item">
+                    <a class="nav__link" href="#dashboard" data-section="dashboard">
+                        <svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>
+                        <span class="nav__label">Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="#movimientos" data-section="movimientos">
+                        <svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12" /><circle cx="4" cy="6" r="1.3" /><circle cx="4" cy="12" r="1.3" /><circle cx="4" cy="18" r="1.3" /></svg>
+                        <span class="nav__label">Movimientos</span>
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="#analisis" data-section="analisis">
+                        <svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2" /></svg>
+                        <span class="nav__label">Análisis</span>
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="#categorias" data-section="categorias">
+                        <svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 12 22l-9-9V4a1 1 0 0 1 1-1h9l8.6 8.6a1.4 1.4 0 0 1 0 2Z" /><circle cx="7.5" cy="7.5" r="1.4" /></svg>
+                        <span class="nav__label">Categorías</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content" id="main" tabindex="-1">
+            <div class="filterbar" id="filterBar"></div>
+
+            <section class="section" id="section-dashboard" aria-labelledby="title-dashboard">
+                <div class="section__head">
+                    <h2 class="section__title" id="title-dashboard">Resumen</h2>
+                    <p class="section__desc">Todas las cifras se calculan dinámicamente a partir de tus movimientos y los filtros.</p>
+                </div>
+
+                <div class="kpi-grid">
+                    <article class="card kpi kpi--income" data-kpi="income">
+                        <span class="kpi__label">Ingresos</span>
+                        <span class="kpi__value" data-kpi-value="income">—</span>
+                        <span class="kpi__hint">Del período seleccionado</span>
+                    </article>
+                    <article class="card kpi kpi--expense" data-kpi="expense">
+                        <span class="kpi__label">Gastos</span>
+                        <span class="kpi__value" data-kpi-value="expense">—</span>
+                        <span class="kpi__hint">Del período seleccionado</span>
+                    </article>
+                    <article class="card kpi kpi--balance" data-kpi="balance">
+                        <span class="kpi__label">Balance</span>
+                        <span class="kpi__value" data-kpi-value="balance">—</span>
+                        <span class="kpi__hint">Ingresos − Gastos</span>
+                    </article>
+                    <article class="card kpi kpi--savings" data-kpi="savings">
+                        <span class="kpi__label">Ahorro</span>
+                        <span class="kpi__value" data-kpi-value="savings">—</span>
+                        <span class="kpi__hint">Del período seleccionado</span>
+                    </article>
+                    <article class="card kpi kpi--rate" data-kpi="savings-rate">
+                        <span class="kpi__label">% Ahorro</span>
+                        <span class="kpi__value" data-kpi-value="savings-rate">—</span>
+                        <span class="kpi__hint">Ahorro / Ingresos</span>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+                    <article class="card panel">
+                        <h3 class="panel__title">Ingresos vs gastos</h3>
+                        <div class="chart-slot" id="chartIncomeExpense"></div>
+                    </article>
+                    <article class="card panel">
+                        <h3 class="panel__title">Gastos por categoría</h3>
+                        <div class="chart-slot" id="chartCategories"></div>
+                    </article>
+                    <article class="card panel">
+                        <h3 class="panel__title">Evolución mensual</h3>
+                        <div class="chart-slot" id="chartEvolution"></div>
+                    </article>
+                    <article class="card panel">
+                        <h3 class="panel__title">Evolución del ahorro</h3>
+                        <div class="chart-slot" id="chartSavings"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section" id="section-movimientos" aria-labelledby="title-movimientos" hidden>
+                <div class="section__head">
+                    <h2 class="section__title" id="title-movimientos">Movimientos</h2>
+                    <p class="section__desc" id="movementsCount">0 movimientos</p>
+                </div>
+
+                <div class="card table-card">
+                    <div class="table-wrap">
+                        <table class="data-table" id="movementsTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col" data-sort="date">Fecha</th>
+                                    <th scope="col" data-sort="type">Tipo</th>
+                                    <th scope="col">Categoría</th>
+                                    <th scope="col">Descripción</th>
+                                    <th scope="col" data-sort="amount" class="cell-number">Monto</th>
+                                    <th scope="col">Método</th>
+                                    <th scope="col" class="cell-actions">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="movementsBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="movementsPagination"></div>
+                </div>
+            </section>
+
+            <section class="section" id="section-analisis" aria-labelledby="title-analisis" hidden>
+                <div class="section__head">
+                    <h2 class="section__title" id="title-analisis">Análisis</h2>
+                    <p class="section__desc">Observaciones generadas exclusivamente a partir de tus datos.</p>
+                </div>
+                <div class="insights-grid" id="analyticsInsights"></div>
+                <article class="card">
+                    <h3 class="panel__title">Observaciones</h3>
+                    <ul class="messages" id="analyticsMessages"></ul>
+                </article>
+            </section>
+
+            <section class="section" id="section-categorias" aria-labelledby="title-categorias" hidden>
+                <div class="section__head">
+                    <h2 class="section__title" id="title-categorias">Categorías</h2>
+                    <p class="section__desc">Gestiona tus categorías y subcategorías de gasto.</p>
+                </div>
+
+                <div class="category-forms">
+                    <form class="card inline-form" id="addCategoryForm" novalidate>
+                        <h3 class="panel__title">Nueva categoría</h3>
+                        <div class="inline-form__row">
+                            <input type="text" name="categoryName" placeholder="Ej. Mascotas" maxlength="40" aria-label="Nombre de la categoría" />
+                            <button class="btn btn--primary" type="submit">Agregar categoría</button>
+                        </div>
+                    </form>
+
+                    <form class="card inline-form" id="addSubcategoryForm" novalidate>
+                        <h3 class="panel__title">Nueva subcategoría</h3>
+                        <div class="inline-form__row">
+                            <select name="subcategoryParent" aria-label="Categoría"></select>
+                            <input type="text" name="subcategoryName" placeholder="Ej. Snacks" maxlength="40" aria-label="Nombre de la subcategoría" />
+                            <button class="btn btn--primary" type="submit">Agregar subcategoría</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="categories-list" id="categoriesList"></div>
+            </section>
+        </main>
+    </div>
+
+    <div class="backdrop" id="backdrop" hidden></div>
+    <div class="action-menu" id="actionMenu" role="menu" aria-label="Registrar movimiento" hidden>
+        <button class="btn btn--ghost" type="button" role="menuitem" data-action="new-income">
+            <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4" /><path d="M5 20h14" /></svg>
+            <span>Registrar ingreso</span>
+        </button>
+        <button class="btn btn--ghost" type="button" role="menuitem" data-action="new-expense">
+            <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V8m0 0 4 4m-4-4-4 4" /><path d="M5 4h14" /></svg>
+            <span>Registrar gasto</span>
+        </button>
+        <button class="btn btn--primary" type="button" role="menuitem" data-action="new-bulk-expense">
+            <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></svg>
+            <span>Gasto masivo</span>
+        </button>
+    </div>
+
+    <div id="modalRoot" hidden></div>
+    <div id="toastRoot" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
