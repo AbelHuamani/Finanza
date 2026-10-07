@@ -25,9 +25,9 @@ export function validateMovementInput(body = {}) {
     if (!Number.isFinite(amount) || amount <= 0) throw httpError(400, "El monto debe ser mayor que 0.");
 
     const isExpense = type === "EXPENSE";
-    const categoryId = isExpense ? body.categoryId ?? null : null;
-    const subcategoryId = isExpense ? body.subcategoryId ?? null : null;
-    const paymentMethod = isExpense ? body.paymentMethod ?? null : null;
+    const categoryId = isExpense && body.categoryId ? String(body.categoryId) : null;
+    const subcategoryId = isExpense && body.subcategoryId ? String(body.subcategoryId) : null;
+    const paymentMethod = isExpense && body.paymentMethod ? String(body.paymentMethod) : null;
 
     if (isExpense && !categoryId) throw httpError(400, "Selecciona una categoría.");
     if (isExpense && !paymentMethod) throw httpError(400, "Selecciona un método de pago.");

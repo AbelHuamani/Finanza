@@ -91,6 +91,6 @@ export function render(state, movements) {
 
     if (parentSelect && document.activeElement !== parentSelect) {
         const current = parentSelect.value;
-        parentSelect.innerHTML = optionsHtml(state.categories, current, "Selecciona categoría");
+        parentSelect.innerHTML = optionsHtml(state.categories, current, "Selecciona");
     }
 }
