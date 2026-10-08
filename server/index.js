@@ -4,6 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import movementsRouter from "./routes/movements.js";
 import catalogRouter from "./routes/catalog.js";
+import metasRouter from "./routes/metas.js";
+import notificacionesRouter from "./routes/notificaciones.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(__dirname, "..");
@@ -15,6 +17,8 @@ app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/movements", movementsRouter);
+app.use("/api/metas", metasRouter);
+app.use("/api/notificaciones", notificacionesRouter);
 app.use("/api", catalogRouter);
 
 app.use("/api", (_req, res) => res.status(404).json({ error: "No existe el recurso." }));

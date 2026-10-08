@@ -167,3 +167,154 @@ export async function createPaymentMethod({ name }) {
     );
     return rowToPaymentMethod(rows[0]);
 }
+
+/* ---------------------------- Metas de ahorro ---------------------------- */
+
+const rowToMeta = (row) => ({
+    id: row.id,
+    nombre: row.nombre,
+    montoObjetivo: Number(row.monto_objetivo),
+    categoria: row.categoria ?? '',
+    descripcion: row.descripcion ?? '',
+    activa: row.activa,
+    alcanzada: row.alcanzada,
+    fechaAlcanzada: row.fecha_alcanzada ?? null,
+    creadoEn: row.creado_en,
+    actualizadoEn: row.actualizado_en,
+});
+
+const META_COLUMNS = 'id, nombre, monto_objetivo, categoria, descripcion, activa, alcanzada, fecha_alcanzada, creado_en, actualizado_en';
+
+export async function getMetas() {
+    const { rows } = await query(`SELECT ${META_COLUMNS} FROM metas_ahorro WHERE activa = true ORDER BY creado_en DESC`);
+    return rows.map(rowToMeta);
+}
+
+export async function createMeta(input) {
+    const { rows } = await query(
+        `INSERT INTO metas_ahorro (nombre, monto_objetivo, categoria, descripcion)
+         VALUES ($1, $2, $3, $4)
+         RETURNING ${META_COLUMNS}`,
+        [input.nombre, input.montoObjetivo, input.categoria ?? '', input.descripcion ?? '']
+    );
+    return rowToMeta(rows[0]);
+}
+
+export async function updateMeta(id, changes) {
+    const fields = [];
+    const params = [id];
+    let i = 2;
+    if (changes.nombre !== undefined) { fields.push(`nombre = $${i++}`); params.push(changes.nombre); }
+    if (changes.montoObjetivo !== undefined) { fields.push(`monto_objetivo = $${i++}`); params.push(changes.montoObjetivo); }
+    if (changes.categoria !== undefined) { fields.push(`categoria = $${i++}`); params.push(changes.categoria); }
+    if (changes.descripcion !== undefined) { fields.push(`descripcion = $${i++}`); params.push(changes.descripcion); }
+    if (changes.activa !== undefined) { fields.push(`activa = $${i++}`); params.push(changes.activa); }
+    if (changes.alcanzada !== undefined) { fields.push(`alcanzada = $${i++}`); params.push(changes.alcanzada); }
+    if (changes.fechaAlcanzada !== undefined) { fields.push(`fecha_alcanzada = $${i++}`); params.push(changes.fechaAlcanzada); }
+    if (!fields.length) throw new Error('No hay campos para actualizar.');
+    const { rows } = await query(
+        `UPDATE metas_ahorro SET ${fields.join(', ')} WHERE id = $1 RETURNING ${META_COLUMNS}`,
+        params
+    );
+    if (!rows[0]) { const error = new Error(`Meta no encontrada: ${id}`); error.status = 404; throw error; }
+    return rowToMeta(rows[0]);
+}
+
+export async function deleteMeta(id) {
+    const { rows } = await query('UPDATE metas_ahorro SET activa = false WHERE id = $1 RETURNING id', [id]);
+    if (!rows[0]) { const error = new Error(`Meta no encontrada: ${id}`); error.status = 404; throw error; }
+    return { id: rows[0].id };
+}
+
+/* ------------------------- Notificaciones de metas ------------------------- */
+
+const rowToNotificacion = (row) => ({
+    id: row.id,
+    metaId: row.meta_id,
+    mensaje: row.mensaje,
+    leida: row.leida,
+    creadoEn: row.creado_en,
+});
+
+/**
+ * Marca una meta como alcanzada e inserta la notificación en una sola transacción.
+ * Si la meta ya estaba alcanzada, solo garantiza que exista la notificación.
+ * Nunca crea notificaciones duplicadas (UNIQUE meta_id).
+ */
+export async function alcanzarMeta(id) {
+    return withTransaction(async (client) => {
+        // Leer la meta con FOR UPDATE para evitar condición de carrera
+        const { rows: metaRows } = await client.query(
+            `SELECT ${META_COLUMNS} FROM metas_ahorro WHERE id = $1 AND activa = true FOR UPDATE`,
+            [id]
+        );
+        if (!metaRows[0]) {
+            const error = new Error(`Meta no encontrada: ${id}`);
+            error.status = 404;
+            throw error;
+        }
+        const meta = rowToMeta(metaRows[0]);
+
+        // Actualizar solo si aún no estaba alcanzada
+        if (!meta.alcanzada) {
+            await client.query(
+                `UPDATE metas_ahorro SET alcanzada = true, fecha_alcanzada = CURRENT_DATE WHERE id = $1`,
+                [id]
+            );
+            meta.alcanzada = true;
+            meta.fechaAlcanzada = new Date().toISOString().slice(0, 10);
+        }
+
+        // Insertar notificación (ON CONFLICT: si ya existe, no hacer nada)
+        const mensaje = `¡Meta alcanzada! Has cumplido la meta: "${meta.nombre}".`;
+        await client.query(
+            `INSERT INTO notificaciones_meta (meta_id, mensaje)
+             VALUES ($1, $2)
+             ON CONFLICT ON CONSTRAINT notificaciones_meta_meta_id_unique DO NOTHING`,
+            [id, mensaje]
+        );
+
+        // Devolver la notificación (nueva o existente)
+        const { rows: notifRows } = await client.query(
+            `SELECT id, meta_id, mensaje, leida, creado_en
+             FROM notificaciones_meta WHERE meta_id = $1`,
+            [id]
+        );
+
+        return {
+            meta,
+            notificacion: notifRows[0] ? rowToNotificacion(notifRows[0]) : null,
+        };
+    });
+}
+
+export async function getNotificaciones() {
+    const { rows } = await query(
+        'SELECT id, meta_id, mensaje, leida, creado_en FROM notificaciones_meta ORDER BY creado_en DESC'
+    );
+    return rows.map(rowToNotificacion);
+}
+
+export async function createNotificacion({ metaId, mensaje }) {
+    const { rows } = await query(
+        `INSERT INTO notificaciones_meta (meta_id, mensaje)
+         VALUES ($1, $2)
+         ON CONFLICT ON CONSTRAINT notificaciones_meta_meta_id_unique DO NOTHING
+         RETURNING id, meta_id, mensaje, leida, creado_en`,
+        [metaId, mensaje]
+    );
+    // Si el ON CONFLICT silenció la inserción, devolver la fila existente
+    if (!rows[0]) {
+        const existing = await query(
+            'SELECT id, meta_id, mensaje, leida, creado_en FROM notificaciones_meta WHERE meta_id = $1',
+            [metaId]
+        );
+        return rowToNotificacion(existing.rows[0]);
+    }
+    return rowToNotificacion(rows[0]);
+}
+
+export async function markNotificacionesLeidas() {
+    await query('UPDATE notificaciones_meta SET leida = true WHERE leida = false');
+    return { ok: true };
+}

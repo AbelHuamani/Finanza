@@ -1,0 +1,27 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "ADVERTENCIA",
+      "label": "Ahorro global vs. filtro activo sin aviso al usuario",
+      "detail": "render(state) usa calculateTotals(state.movements) sin aplicar los filtros activos, mientras el dashboard aplica applyFilters. El comportamiento es deliberado pero la UI no lo comunica: añadir una nota ('Basado en el ahorro total') eliminaría la ambigüedad.",
+      "file": "js/modules/metas.js",
+      "confidence": "confirmed"
+    },
+    {
+      "severity": "ADVERTENCIA",
+      "label": "204 con body en DELETE",
+      "detail": "res.status(204).send(await deleteMeta(id)) envía { id } como body en una respuesta 204, violando RFC 9110. Cambiar a: await deleteMeta(id); res.status(204).end()",
+      "file": "server/routes/metas.js",
+      "confidence": "confirmed"
+    },
+    {
+      "severity": "SUGERENCIA",
+      "label": "Ventana de desincronización en render tras nuevo ingreso",
+      "detail": "render(state) no llama checkGoalsReached. Si un ingreso que alcanza una meta se registra en la misma sesión, la tarjeta se renderiza como alcanzada visualmente pero la persistencia y el toast no se disparan hasta la próxima recarga.",
+      "file": "js/modules/metas.js",
+      "confidence": "confirmed"
+    }
+  ],
+  "reviewDoc": "d:\\Finanza\\.agents\\tasks\\review.md"
+}

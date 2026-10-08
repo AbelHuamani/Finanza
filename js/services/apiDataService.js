@@ -51,6 +51,14 @@ const toSubcategory = (subcategory) => ({
 
 const toPaymentMethod = (method) => ({ ...method, id: String(method.id) });
 
+const toMeta = (meta) => ({
+    ...meta,
+    id: String(meta.id),
+    montoObjetivo: Number(meta.montoObjetivo),
+    alcanzada: Boolean(meta.alcanzada),
+    activa: Boolean(meta.activa),
+});
+
 export const apiDataService = {
     getMovements: async () => (await request("/movements")).map(toMovement),
     getCategories: async () => (await request("/categories")).map(toCategory),
@@ -76,4 +84,33 @@ export const apiDataService = {
         toSubcategory(await request("/subcategories", { method: "POST", body: JSON.stringify(input) })),
     createPaymentMethod: async (input) =>
         toPaymentMethod(await request("/payment-methods", { method: "POST", body: JSON.stringify(input) })),
+
+    getMetas: async () => (await request('/metas')).map(toMeta),
+    createMeta: async (input) => toMeta(await request('/metas', { method: 'POST', body: JSON.stringify(input) })),
+    updateMeta: async (id, changes) => toMeta(await request(`/metas/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(changes) })),
+    deleteMeta: (id) => request(`/metas/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+    /**
+     * Marca la meta como alcanzada e inserta la notificación atómicamente.
+     * Devuelve { meta, notificacion }.
+     */
+    alcanzarMeta: async (id) => {
+        const result = await request(`/metas/${encodeURIComponent(id)}/alcanzar`, { method: 'PUT' });
+        return {
+            meta: toMeta(result.meta),
+            notificacion: result.notificacion
+                ? { ...result.notificacion, id: String(result.notificacion.id), metaId: String(result.notificacion.metaId) }
+                : null,
+        };
+    },
+
+    getNotificaciones: async () => {
+        const list = await request('/notificaciones');
+        return list.map(n => ({ ...n, id: String(n.id), metaId: String(n.metaId) }));
+    },
+    createNotificacion: async ({ metaId, mensaje }) => {
+        const n = await request('/notificaciones', { method: 'POST', body: JSON.stringify({ metaId: Number(metaId), mensaje }) });
+        return { ...n, id: String(n.id), metaId: String(n.metaId) };
+    },
+    markNotificacionesLeidas: () => request('/notificaciones/leer', { method: 'PATCH' }),
 };

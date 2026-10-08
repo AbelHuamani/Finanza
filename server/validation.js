@@ -51,3 +51,23 @@ export function validateName(body = {}, field = "name") {
     if (name.length > 60) throw httpError(400, `El campo "${field}" es demasiado largo.`);
     return name;
 }
+
+export function validateMetaInput(body = {}) {
+    const nombre = String(body.nombre ?? '').trim();
+    if (!nombre) throw httpError(400, 'El nombre de la meta es obligatorio.');
+    if (nombre.length > 120) throw httpError(400, 'El nombre es demasiado largo (máximo 120 caracteres).');
+
+    const montoObjetivo = Number(body.montoObjetivo);
+    if (!Number.isFinite(montoObjetivo) || montoObjetivo <= 0) throw httpError(400, 'El monto objetivo debe ser mayor que 0.');
+
+    const categoria = String(body.categoria ?? '').trim();
+    const descripcion = String(body.descripcion ?? '').trim();
+
+    const result = { nombre, montoObjetivo, categoria, descripcion };
+
+    if (body.alcanzada !== undefined) result.alcanzada = Boolean(body.alcanzada);
+    if (body.fechaAlcanzada !== undefined) result.fechaAlcanzada = body.fechaAlcanzada || null;
+    if (body.activa !== undefined) result.activa = Boolean(body.activa);
+
+    return result;
+}

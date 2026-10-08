@@ -827,3 +827,320 @@ body.modal-open {
         transform: translateY(0);
     }
 }
+
+/* ================= Metas de Ahorro ================= */
+.metas-actions {
+    margin-bottom: var(--space-4);
+}
+
+.metas-grid {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: 1fr;
+}
+
+.meta-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    position: relative;
+}
+
+.meta-card--reached {
+    border-color: var(--c-income);
+    background: linear-gradient(135deg, var(--c-surface), var(--c-income-soft));
+}
+
+.meta-card__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.meta-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+}
+
+.meta-card__icon svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    color: var(--c-accent);
+    flex-shrink: 0;
+}
+
+.meta-card--reached .meta-card__icon svg {
+    color: var(--c-income);
+}
+
+.meta-card__name {
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.meta-card__badge {
+    padding: 0.15rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 650;
+    border-radius: var(--radius-full);
+    background: var(--c-primary-soft);
+    color: var(--c-primary);
+    white-space: nowrap;
+}
+
+.meta-card__delete {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.meta-card__amounts {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-1);
+    font-variant-numeric: tabular-nums;
+}
+
+.meta-card__current {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--c-accent);
+}
+
+.meta-card--reached .meta-card__current {
+    color: var(--c-income);
+}
+
+.meta-card__separator {
+    color: var(--c-text-muted);
+    font-size: 1rem;
+}
+
+.meta-card__goal {
+    font-size: 1rem;
+    color: var(--c-text-muted);
+}
+
+.meta-progress-bar {
+    height: 0.55rem;
+    background: var(--c-surface-2);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.meta-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.4s ease;
+    min-width: 0;
+}
+
+.meta-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: 0.85rem;
+}
+
+.meta-card__percent {
+    font-weight: 700;
+    color: var(--c-text-muted);
+}
+
+.meta-card__status {
+    color: var(--c-text-muted);
+    font-size: 0.82rem;
+}
+
+.meta-card__status--reached {
+    color: var(--c-income);
+    font-weight: 600;
+}
+
+.meta-card__desc {
+    font-size: 0.82rem;
+    color: var(--c-text-muted);
+    border-top: 1px solid var(--c-border);
+    padding-top: var(--space-2);
+}
+
+/* Badge de notificación de meta alcanzada en botón Gasto masivo */
+.goals-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 1.2rem;
+    height: 1.2rem;
+    background: var(--c-expense, #e74c3c);
+    border-radius: 50%;
+    border: 2px solid var(--c-topbar-bg, #0f1117);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: badge-pulse 1.8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.goals-badge svg {
+    width: 0.65rem;
+    height: 0.65rem;
+    stroke: #fff;
+    stroke-width: 2.5;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.2); opacity: 0.85; }
+}
+
+/* ── Sistema de notificaciones de metas ──────────────────────────── */
+
+/* Botón campana */
+.notif-btn {
+    position: relative;
+}
+
+/* Badge contador de no leídas */
+.notif-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    padding: 0 0.22rem;
+    background: var(--c-expense);
+    color: #fff;
+    border-radius: var(--radius-full);
+    border: 2px solid var(--c-surface);
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    animation: badge-pulse 1.8s ease-in-out infinite;
+}
+
+/* Panel de notificaciones */
+.notif-panel {
+    position: absolute;
+    top: calc(var(--topbar-height) - 0.5rem);
+    right: var(--space-4);
+    width: min(22rem, calc(100vw - 2rem));
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    overflow: hidden;
+}
+
+.notif-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--c-border);
+}
+
+.notif-panel__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text);
+}
+
+.notif-panel__close {
+    flex-shrink: 0;
+}
+
+.notif-panel__close svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.notif-panel__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 22rem;
+    overflow-y: auto;
+}
+
+.notif-panel__empty {
+    padding: var(--space-5) var(--space-4);
+    text-align: center;
+    color: var(--c-text-muted);
+    font-size: 0.85rem;
+}
+
+.notif-panel__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--c-border);
+    position: relative;
+    transition: background var(--transition-fast);
+}
+
+.notif-panel__item:last-child {
+    border-bottom: none;
+}
+
+.notif-panel__item:not(.notif-panel__item--read) {
+    background: var(--c-primary-soft);
+}
+
+.notif-panel__icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+.notif-panel__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.notif-panel__msg {
+    font-size: 0.82rem;
+    color: var(--c-text);
+    line-height: 1.45;
+    margin: 0 0 var(--space-1);
+}
+
+.notif-panel__time {
+    font-size: 0.72rem;
+    color: var(--c-text-muted);
+}
+
+.notif-panel__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--c-primary);
+    flex-shrink: 0;
+    margin-top: 0.35rem;
+    align-self: flex-start;
+}
+
+
+@media (min-width: 640px) {
+    .metas-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .metas-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

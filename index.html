@@ -44,6 +44,22 @@
                     <span>Gasto masivo</span>
                 </button>
 
+                <!-- Botón de notificaciones -->
+                <button
+                    id="notificationsBtn"
+                    class="btn btn--ghost btn--icon action-desktop notif-btn"
+                    type="button"
+                    aria-label="Notificaciones"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                    title="Notificaciones"
+                >
+                    <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 8a6 6 0 0 1 12 0c0 5 3 7 3 7H3s3-2 3-7"/>
+                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                    </svg>
+                </button>
+
                 <button class="btn btn--primary btn--icon actions-toggle" type="button" data-toggle-actions aria-label="Registrar movimiento" aria-expanded="false" aria-controls="actionMenu">
                     <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
                 </button>
@@ -74,6 +90,12 @@
                     <a class="nav__link" href="#categorias" data-section="categorias">
                         <svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 12 22l-9-9V4a1 1 0 0 1 1-1h9l8.6 8.6a1.4 1.4 0 0 1 0 2Z" /><circle cx="7.5" cy="7.5" r="1.4" /></svg>
                         <span class="nav__label">Categorías</span>
+                    </a>
+                </li>
+                <li class="nav__item">
+                    <a class="nav__link" href="#metas" data-section="metas">
+                        <svg class="nav__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
+                        <span class="nav__label">Metas</span>
                     </a>
                 </li>
             </ul>
@@ -201,6 +223,20 @@
                 </div>
 
                 <div class="categories-list" id="categoriesList"></div>
+            </section>
+
+            <section class="section" id="section-metas" aria-labelledby="title-metas" hidden>
+                <div class="section__head">
+                    <h2 class="section__title" id="title-metas">Metas de Ahorro</h2>
+                    <p class="section__desc">Sigue el progreso hacia tus objetivos financieros.</p>
+                </div>
+                <div class="metas-actions">
+                    <button class="btn btn--primary" type="button" data-action="new-meta">
+                        <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                        <span>Agregar meta</span>
+                    </button>
+                </div>
+                <div class="metas-grid" id="metasList"></div>
             </section>
         </main>
     </div>

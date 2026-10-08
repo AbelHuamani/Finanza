@@ -2,6 +2,8 @@ DROP TABLE IF EXISTS movimientos CASCADE;
 DROP TABLE IF EXISTS subcategorias CASCADE;
 DROP TABLE IF EXISTS metodos_pago CASCADE;
 DROP TABLE IF EXISTS categorias CASCADE;
+DROP TABLE IF EXISTS notificaciones_meta CASCADE;
+DROP TABLE IF EXISTS metas_ahorro CASCADE;
 
 -- ------------------------------------------------------------
 --  Tablas (id entero autoincremental)
@@ -74,4 +76,44 @@ INSERT INTO metodos_pago (nombre)
 VALUES 
     ('Efectivo'),
     ('Yape');
-    
+
+-- ------------------------------------------------------------
+--  Metas de Ahorro
+-- ------------------------------------------------------------
+
+CREATE TABLE metas_ahorro (
+    id                integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre            text NOT NULL,
+    monto_objetivo    numeric(12,2) NOT NULL CHECK (monto_objetivo > 0),
+    categoria         text NOT NULL DEFAULT '',
+    descripcion       text NOT NULL DEFAULT '',
+    activa            boolean NOT NULL DEFAULT true,
+    alcanzada         boolean NOT NULL DEFAULT false,
+    fecha_alcanzada   date,
+    creado_en         timestamptz NOT NULL DEFAULT now(),
+    actualizado_en    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX metas_ahorro_activa_idx ON metas_ahorro (activa);
+CREATE INDEX metas_ahorro_alcanzada_idx ON metas_ahorro (alcanzada);
+
+CREATE TRIGGER metas_ahorro_actualizado_en
+    BEFORE UPDATE ON metas_ahorro
+    FOR EACH ROW
+    EXECUTE FUNCTION fijar_actualizado_en();
+
+-- ------------------------------------------------------------
+--  Notificaciones de metas alcanzadas
+-- ------------------------------------------------------------
+
+CREATE TABLE notificaciones_meta (
+    id          integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    meta_id     integer NOT NULL REFERENCES metas_ahorro (id) ON DELETE CASCADE,
+    mensaje     text NOT NULL,
+    leida       boolean NOT NULL DEFAULT false,
+    creado_en   timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT notificaciones_meta_meta_id_unique UNIQUE (meta_id)
+);
+
+CREATE INDEX notificaciones_meta_leida_idx ON notificaciones_meta (leida);
+

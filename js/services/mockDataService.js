@@ -29,6 +29,18 @@ function createSeed() {
 }
 
 let database = createSeed();
+let mockMetas = [];
+
+// Notificaciones mock persistidas en localStorage
+const NOTIF_KEY = 'finanza_mock_notificaciones';
+
+function loadMockNotificaciones() {
+    try { return JSON.parse(localStorage.getItem(NOTIF_KEY) ?? '[]'); } catch { return []; }
+}
+
+function saveMockNotificaciones(list) {
+    try { localStorage.setItem(NOTIF_KEY, JSON.stringify(list)); } catch { /* noop */ }
+}
 
 function nextId(prefix, items) {
     const highest = items.reduce((max, item) => {
@@ -154,5 +166,104 @@ export const mockDataService = {
     async reset() {
         await wait();
         database = createSeed();
+        mockMetas = [];
+    },
+
+    async getMetas() {
+        await wait();
+        return clone(mockMetas.filter(m => m.activa !== false));
+    },
+
+    async createMeta(input) {
+        await wait();
+        const meta = {
+            id: String(mockMetas.length + 1),
+            nombre: input.nombre,
+            montoObjetivo: Number(input.montoObjetivo),
+            categoria: input.categoria ?? '',
+            descripcion: input.descripcion ?? '',
+            activa: true,
+            alcanzada: false,
+            fechaAlcanzada: null,
+            creadoEn: nowIso(),
+            actualizadoEn: nowIso(),
+        };
+        mockMetas.push(meta);
+        return clone(meta);
+    },
+
+    async updateMeta(id, changes) {
+        await wait();
+        const index = mockMetas.findIndex(m => m.id === id);
+        if (index === -1) throw new Error(`Meta no encontrada: ${id}`);
+        mockMetas[index] = { ...mockMetas[index], ...changes, id, actualizadoEn: nowIso() };
+        return clone(mockMetas[index]);
+    },
+
+    async deleteMeta(id) {
+        await wait();
+        const index = mockMetas.findIndex(m => m.id === id);
+        if (index === -1) throw new Error(`Meta no encontrada: ${id}`);
+        mockMetas[index] = { ...mockMetas[index], activa: false };
+        return { id };
+    },
+
+    async alcanzarMeta(id) {
+        await wait();
+        const index = mockMetas.findIndex(m => m.id === id);
+        if (index === -1) throw new Error(`Meta no encontrada: ${id}`);
+        if (!mockMetas[index].alcanzada) {
+            mockMetas[index] = {
+                ...mockMetas[index],
+                alcanzada: true,
+                fechaAlcanzada: new Date().toISOString().slice(0, 10),
+                actualizadoEn: nowIso(),
+            };
+        }
+        const meta = clone(mockMetas[index]);
+        const list = loadMockNotificaciones();
+        let notificacion = list.find(n => n.metaId === String(id));
+        if (!notificacion) {
+            notificacion = {
+                id: String(Date.now()),
+                metaId: String(id),
+                mensaje: `¡Meta alcanzada! Has cumplido la meta: "${meta.nombre}".`,
+                leida: false,
+                creadoEn: nowIso(),
+            };
+            list.unshift(notificacion);
+            saveMockNotificaciones(list);
+        }
+        return { meta, notificacion: clone(notificacion) };
+    },
+
+    async getNotificaciones() {
+        await wait();
+        return clone(loadMockNotificaciones());
+    },
+
+    async createNotificacion({ metaId, mensaje }) {
+        await wait();
+        const list = loadMockNotificaciones();
+        // Evitar duplicados por meta
+        const existing = list.find(n => n.metaId === String(metaId));
+        if (existing) return clone(existing);
+        const notif = {
+            id: String(Date.now()),
+            metaId: String(metaId),
+            mensaje,
+            leida: false,
+            creadoEn: new Date().toISOString(),
+        };
+        list.unshift(notif);
+        saveMockNotificaciones(list);
+        return clone(notif);
+    },
+
+    async markNotificacionesLeidas() {
+        await wait();
+        const list = loadMockNotificaciones().map(n => ({ ...n, leida: true }));
+        saveMockNotificaciones(list);
+        return { ok: true };
     },
 };

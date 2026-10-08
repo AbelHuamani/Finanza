@@ -5,6 +5,7 @@ export const SECTIONS = [
     { id: "movimientos", label: "Movimientos", title: "Movimientos", subtitle: "Historial de ingresos y gastos" },
     { id: "analisis", label: "Análisis", title: "Análisis", subtitle: "Observaciones sobre tus finanzas" },
     { id: "categorias", label: "Categorías", title: "Categorías", subtitle: "Categorías y subcategorías" },
+    { id: "metas", label: "Metas", title: "Metas de Ahorro", subtitle: "Sigue el progreso hacia tus objetivos" },
 ];
 
 export const APP_ACTIONS = {
@@ -13,6 +14,8 @@ export const APP_ACTIONS = {
     NEW_BULK_EXPENSE: "new-bulk-expense",
     EDIT_MOVEMENT: "edit-movement",
     DELETE_MOVEMENT: "delete-movement",
+    NEW_META: "new-meta",
+    DELETE_META: "delete-meta",
 };
 
 export const MOVEMENT_TYPES = {
@@ -48,3 +51,8 @@ export const CURRENCY = {
     code: "PEN",
     locale: "es-PE",
 };
+
+export const META_CATEGORIES = [
+    'Tecnología', 'Vehículo', 'Viaje', 'Educación',
+    'Emergencia', 'Hogar', 'Salud', 'Otro'
+];

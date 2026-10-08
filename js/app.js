@@ -3,6 +3,7 @@ import { dataService } from "./services/dataService.js";
 import { getState, setState, subscribe } from "./state.js";
 import { applyFilters } from "./domain/filters.js";
 import { qs, qsa } from "./utils/dom.js";
+import { initNotifications } from "./components/notifications.js";
 import * as filtersModule from "./modules/filters.js";
 import * as dashboardModule from "./modules/dashboard.js";
 import * as transactionsModule from "./modules/transactions.js";
@@ -10,6 +11,7 @@ import * as analyticsModule from "./modules/analytics.js";
 import * as categoriesModule from "./modules/categories.js";
 import * as incomeModule from "./modules/income.js";
 import * as expensesModule from "./modules/expenses.js";
+import * as metasModule from "./modules/metas.js";
 
 const dom = {
     title: qs("#pageTitle"),
@@ -132,6 +134,7 @@ function renderApp() {
     transactionsModule.render(state, filtered);
     analyticsModule.render(state, filtered);
     categoriesModule.render(state, filtered);
+    metasModule.render(state);
 }
 
 function mountModules() {
@@ -140,6 +143,7 @@ function mountModules() {
     categoriesModule.mount();
     incomeModule.mount();
     expensesModule.mount();
+    metasModule.mount();
 }
 
 async function loadInitialData() {
@@ -154,6 +158,9 @@ async function loadInitialData() {
         ]);
 
         setState({ movements, categories, subcategories, paymentMethods, status: "ready" });
+        // Inicializar notificaciones ANTES de disparar app:data-ready
+        // para que estén listas cuando loadMetas() las necesite
+        await initNotifications();
         document.dispatchEvent(new CustomEvent("app:data-ready"));
         logDataSummary();
     } catch (error) {
