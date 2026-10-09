@@ -180,11 +180,15 @@ export const mockDataService = {
             id: String(mockMetas.length + 1),
             nombre: input.nombre,
             montoObjetivo: Number(input.montoObjetivo),
+            categoriaId: input.categoriaId ?? null,
             categoria: input.categoria ?? '',
             descripcion: input.descripcion ?? '',
+            prioridad: input.prioridad ?? 'MEDIA',
+            estado: 'ACTIVA',
             activa: true,
             alcanzada: false,
             fechaAlcanzada: null,
+            reclamadaEn: null,
             creadoEn: nowIso(),
             actualizadoEn: nowIso(),
         };
@@ -222,12 +226,13 @@ export const mockDataService = {
         }
         const meta = clone(mockMetas[index]);
         const list = loadMockNotificaciones();
-        let notificacion = list.find(n => n.metaId === String(id));
+        let notificacion = list.find(n => n.metaId === String(id) && n.tipo === 'META_ALCANZADA');
         if (!notificacion) {
             notificacion = {
                 id: String(Date.now()),
                 metaId: String(id),
                 mensaje: `¡Meta alcanzada! Has cumplido la meta: "${meta.nombre}".`,
+                tipo: 'META_ALCANZADA',
                 leida: false,
                 creadoEn: nowIso(),
             };
@@ -237,21 +242,74 @@ export const mockDataService = {
         return { meta, notificacion: clone(notificacion) };
     },
 
+    async reclamarMeta(id, movementInput) {
+        await wait();
+        const index = mockMetas.findIndex(m => m.id === id);
+        if (index === -1) throw new Error(`Meta no encontrada: ${id}`);
+        const meta = mockMetas[index];
+
+        if (!meta.activa) {
+            throw new Error(`La meta ya no está activa: ${meta.estado}`);
+        }
+
+        // Crear movimiento
+        const movement = normalizeMovement({ ...movementInput, metaId: id });
+        database.movements.push(movement);
+
+        // Calcular si el gasto cubre el monto total
+        const gastoTotal = Number(movementInput.amount);
+        const metaCompletada = gastoTotal >= meta.montoObjetivo;
+
+        // Actualizar meta
+        mockMetas[index] = {
+            ...mockMetas[index],
+            estado: metaCompletada ? 'RECLAMADA' : 'ACTIVA',
+            activa: metaCompletada ? false : true,
+            reclamadaEn: nowIso(),
+            actualizadoEn: nowIso(),
+        };
+
+        // Crear notificación
+        const tipo = metaCompletada ? 'META_RECLAMADA' : 'PROGRESO_PARCIAL';
+        const mensaje = metaCompletada
+            ? `Has reclamado la meta: "${meta.nombre}".`
+            : `Has registrado un gasto parcial para "${meta.nombre}". Faltan S/ ${(meta.montoObjetivo - gastoTotal).toFixed(2)}.`;
+
+        const list = loadMockNotificaciones();
+        const notificacion = {
+            id: String(Date.now()),
+            metaId: String(id),
+            mensaje,
+            tipo,
+            leida: false,
+            creadoEn: nowIso(),
+        };
+        list.unshift(notificacion);
+        saveMockNotificaciones(list);
+
+        return {
+            movement: clone(movement),
+            meta: clone(mockMetas[index]),
+            notificacion: clone(notificacion),
+        };
+    },
+
     async getNotificaciones() {
         await wait();
         return clone(loadMockNotificaciones());
     },
 
-    async createNotificacion({ metaId, mensaje }) {
+    async createNotificacion({ metaId, mensaje, tipo = 'META_ALCANZADA' }) {
         await wait();
         const list = loadMockNotificaciones();
-        // Evitar duplicados por meta
-        const existing = list.find(n => n.metaId === String(metaId));
+        // Evitar duplicados por meta y tipo
+        const existing = list.find(n => n.metaId === String(metaId) && n.tipo === tipo);
         if (existing) return clone(existing);
         const notif = {
             id: String(Date.now()),
             metaId: String(metaId),
             mensaje,
+            tipo,
             leida: false,
             creadoEn: new Date().toISOString(),
         };

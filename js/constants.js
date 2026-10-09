@@ -52,7 +52,31 @@ export const CURRENCY = {
     locale: "es-PE",
 };
 
-export const META_CATEGORIES = [
-    'Tecnología', 'Vehículo', 'Viaje', 'Educación',
-    'Emergencia', 'Hogar', 'Salud', 'Otro'
+// Prioridades de metas de ahorro
+export const META_PRIORITIES = {
+    URGENTE: 'URGENTE',
+    MEDIA: 'MEDIA',
+    BAJA: 'BAJA',
+};
+
+export const META_PRIORITY_OPTIONS = [
+    { value: META_PRIORITIES.URGENTE, label: 'Urgente' },
+    { value: META_PRIORITIES.MEDIA, label: 'Media' },
+    { value: META_PRIORITIES.BAJA, label: 'Baja' },
 ];
+
+// Estados de metas de ahorro
+export const META_STATES = {
+    ACTIVA: 'ACTIVA',
+    ALCANZADA: 'ALCANZADA',
+    RECLAMADA: 'RECLAMADA',
+    ELIMINADA: 'ELIMINADA',
+};
+
+// Tipos de notificaciones de metas
+export const NOTIFICATION_TYPES = {
+    META_ALCANZADA: 'META_ALCANZADA',
+    OPORTUNIDAD_DISPONIBLE: 'OPORTUNIDAD_DISPONIBLE',
+    PROGRESO_PARCIAL: 'PROGRESO_PARCIAL',
+    META_RECLAMADA: 'META_RECLAMADA',
+};

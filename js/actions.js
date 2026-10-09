@@ -15,6 +15,12 @@ export async function addMovement(input) {
     return created;
 }
 
+export async function claimMeta(metaId, movementInput) {
+    const { movement, meta, notificacion } = await dataService.reclamarMeta(metaId, movementInput);
+    setState({ movements: [...getState().movements, movement] });
+    return { movement, meta, notificacion };
+}
+
 export async function addMovements(inputs) {
     const created = await dataService.createMovements(inputs);
     setState({ movements: [...getState().movements, ...created] });

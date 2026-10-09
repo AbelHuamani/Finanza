@@ -15,6 +15,7 @@ let state = {
     filters: { ...DEFAULT_FILTERS },
     ui: { table: { ...initialTable } },
     activeSection: DEFAULT_SECTION,
+    navigationParams: {},
     status: "idle",
     error: null,
 };

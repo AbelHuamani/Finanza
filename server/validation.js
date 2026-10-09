@@ -60,14 +60,39 @@ export function validateMetaInput(body = {}) {
     const montoObjetivo = Number(body.montoObjetivo);
     if (!Number.isFinite(montoObjetivo) || montoObjetivo <= 0) throw httpError(400, 'El monto objetivo debe ser mayor que 0.');
 
-    const categoria = String(body.categoria ?? '').trim();
+    const categoriaId = body.categoriaId ? Number(body.categoriaId) : null;
+    if (categoriaId !== null && (!Number.isFinite(categoriaId) || categoriaId <= 0)) {
+        throw httpError(400, 'La categoría debe ser un ID válido.');
+    }
+
     const descripcion = String(body.descripcion ?? '').trim();
 
-    const result = { nombre, montoObjetivo, categoria, descripcion };
+    const result = { nombre, montoObjetivo, categoriaId, descripcion };
+
+    // Validar prioridad
+    if (body.prioridad !== undefined) {
+        const VALID_PRIORITIES = new Set(['URGENTE', 'MEDIA', 'BAJA']);
+        const prioridad = String(body.prioridad).trim().toUpperCase();
+        if (!VALID_PRIORITIES.has(prioridad)) {
+            throw httpError(400, 'La prioridad debe ser URGENTE, MEDIA o BAJA.');
+        }
+        result.prioridad = prioridad;
+    }
+
+    // Validar estado
+    if (body.estado !== undefined) {
+        const VALID_STATES = new Set(['ACTIVA', 'ALCANZADA', 'RECLAMADA', 'ELIMINADA']);
+        const estado = String(body.estado).trim().toUpperCase();
+        if (!VALID_STATES.has(estado)) {
+            throw httpError(400, 'El estado debe ser ACTIVA, ALCANZADA, RECLAMADA o ELIMINADA.');
+        }
+        result.estado = estado;
+    }
 
     if (body.alcanzada !== undefined) result.alcanzada = Boolean(body.alcanzada);
     if (body.fechaAlcanzada !== undefined) result.fechaAlcanzada = body.fechaAlcanzada || null;
     if (body.activa !== undefined) result.activa = Boolean(body.activa);
+    if (body.reclamadaEn !== undefined) result.reclamadaEn = body.reclamadaEn || null;
 
     return result;
 }

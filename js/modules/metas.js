@@ -1,13 +1,14 @@
-import { APP_ACTIONS, META_CATEGORIES } from '../constants.js';
-import { getState } from '../state.js';
+import { APP_ACTIONS, META_PRIORITIES, META_PRIORITY_OPTIONS, META_STATES, NOTIFICATION_TYPES } from '../constants.js';
+import { getState, setState } from '../state.js';
 import { dataService } from '../services/dataService.js';
-import { calculateTotals } from '../domain/calculations.js';
+import { calculateTotals, calculateGoalAllocations } from '../domain/calculations.js';
 import { openModal, setFieldErrors } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
 import { registerNotification, initNotifications } from '../components/notifications.js';
-import { field } from '../components/forms.js';
+import { field, optionsHtml } from '../components/forms.js';
 import { formatCurrency } from '../utils/currency.js';
 import { escapeHtml, qs } from '../utils/dom.js';
+import { navigate } from '../app.js';
 
 const TROPHY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4a2 2 0 0 1-2-2V5h4"/><path d="M18 9h2a2 2 0 0 0 2-2V5h-4"/><path d="M6 9a6 6 0 0 0 12 0"/><path d="M12 15v4"/><path d="M8 19h8"/></svg>';
 const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>';
@@ -38,11 +39,13 @@ async function loadMetas() {
         const { savings } = calculateTotals(movements);
         lastSavings = savings;
 
-        // 1. Metas aún no alcanzadas que ya superaron el objetivo → marcarlas
-        await checkGoalsReached(savings);
+        // Calcular distribución de ahorro
+        const allocations = calculateGoalAllocations(metas, savings);
 
-        // 2. Metas ya alcanzadas → garantizar que exista su notificación en la DB
-        //    y recargar el array de notificaciones para reflejar el estado real
+        // Marcar metas alcanzadas según distribución
+        await checkGoalsReached(allocations);
+
+        // Sincronizar notificaciones para metas alcanzadas
         await syncNotificacionesForReachedGoals();
 
         renderMetas();
@@ -71,25 +74,28 @@ async function syncNotificacionesForReachedGoals() {
     }
 }
 
-async function checkGoalsReached(savings) {
-    for (const meta of metas) {
-        if (!meta.alcanzada && savings >= meta.montoObjetivo) {
-            await markGoalReached(meta, savings);
+async function checkGoalsReached(allocations) {
+    for (const allocation of allocations) {
+        if (!allocation.alcanzada && allocation.montoAsignado >= allocation.montoObjetivo) {
+            await markGoalReached(allocation);
         }
     }
 }
 
-async function markGoalReached(meta, savings) {
+async function markGoalReached(allocation) {
     try {
         // Una sola llamada al backend: actualiza meta + crea notificación atómicamente
-        const { meta: updatedMeta, notificacion } = await dataService.alcanzarMeta(meta.id);
+        const { meta: updatedMeta, notificacion } = await dataService.alcanzarMeta(allocation.id);
         // Actualizar estado local
-        meta.alcanzada = updatedMeta.alcanzada;
-        meta.fechaAlcanzada = updatedMeta.fechaAlcanzada;
+        const metaIndex = metas.findIndex(m => m.id === allocation.id);
+        if (metaIndex !== -1) {
+            metas[metaIndex].alcanzada = updatedMeta.alcanzada;
+            metas[metaIndex].fechaAlcanzada = updatedMeta.fechaAlcanzada;
+        }
         // Registrar notificación en el panel (sin llamada HTTP extra)
         if (notificacion) registerNotification(notificacion);
         showToast(
-            `🎉 ¡Meta alcanzada! Ya puedes cumplir tu objetivo: ${meta.nombre}.`,
+            `🎉 ¡Meta alcanzada! Ya puedes cumplir tu objetivo: ${allocation.nombre}.`,
             'success',
             8000
         );
@@ -106,7 +112,8 @@ export function render(state) {
     // Solo actuar si las metas ya cargaron (metas.length puede ser 0 si no hay metas,
     // usamos lastSavings !== null como señal de que loadMetas() ya corrió)
     if (lastSavings !== null && savings !== lastSavings && metas.length > 0) {
-        checkGoalsReached(savings);
+        const allocations = calculateGoalAllocations(metas, savings);
+        checkGoalsReached(allocations);
     }
 
     // Siempre actualizar lastSavings una vez que loadMetas() inicializó el módulo
@@ -135,30 +142,48 @@ function renderMetasWithSavings(savings) {
         return;
     }
 
-    container.innerHTML = metas.map(meta => metaCardHtml(meta, savings)).join('');
+    const allocations = calculateGoalAllocations(metas, savings);
+    const { categories } = getState();
+
+    container.innerHTML = allocations.map(allocation => metaCardHtml(allocation, categories)).join('');
 }
 
-function metaCardHtml(meta, savings) {
-    const progress = Math.min(100, meta.montoObjetivo > 0 ? (savings / meta.montoObjetivo) * 100 : 0);
-    const faltante = Math.max(0, meta.montoObjetivo - savings);
-    const reached = meta.alcanzada || savings >= meta.montoObjetivo;
+function metaCardHtml(allocation, categories) {
+    const progress = Math.min(100, allocation.porcentaje);
+    const faltante = allocation.montoFaltante;
+    const reached = allocation.alcanzada;
     const progressColor = reached ? 'var(--c-income)' : 'var(--c-accent)';
 
-    return `<article class="card meta-card${reached ? ' meta-card--reached' : ''}" data-meta-id="${escapeHtml(meta.id)}">
+    // Get category name
+    const category = categories.find(c => c.id === allocation.categoriaId);
+    const categoryName = category ? category.name : allocation.categoria || '';
+
+    // Priority badge
+    const priorityColors = {
+        [META_PRIORITIES.URGENTE]: 'var(--c-danger)',
+        [META_PRIORITIES.MEDIA]: 'var(--c-warning)',
+        [META_PRIORITIES.BAJA]: 'var(--c-success)',
+    };
+    const priorityColor = priorityColors[allocation.prioridad] || 'var(--c-accent)';
+
+    return `<article class="card meta-card${reached ? ' meta-card--reached' : ''}" data-meta-id="${escapeHtml(allocation.id)}">
         <div class="meta-card__header">
             <div class="meta-card__title-row">
                 <span class="meta-card__icon">${TROPHY_ICON}</span>
-                <h3 class="meta-card__name">${escapeHtml(meta.nombre)}</h3>
+                <h3 class="meta-card__name">${escapeHtml(allocation.nombre)}</h3>
             </div>
-            ${meta.categoria ? `<span class="meta-card__badge">${escapeHtml(meta.categoria)}</span>` : ''}
+            <div class="meta-card__badges">
+                ${categoryName ? `<span class="meta-card__badge">${escapeHtml(categoryName)}</span>` : ''}
+                <span class="meta-card__badge" style="background:${priorityColor}">${escapeHtml(allocation.prioridad)}</span>
+            </div>
             <button class="btn btn--icon btn--ghost btn--danger meta-card__delete" type="button"
-                data-action="${APP_ACTIONS.DELETE_META}" data-movement-id="${escapeHtml(meta.id)}"
-                aria-label="Eliminar meta ${escapeHtml(meta.nombre)}">${TRASH_ICON}</button>
+                data-action="${APP_ACTIONS.DELETE_META}" data-movement-id="${escapeHtml(allocation.id)}"
+                aria-label="Eliminar meta ${escapeHtml(allocation.nombre)}">${TRASH_ICON}</button>
         </div>
         <div class="meta-card__amounts">
-            <span class="meta-card__current">${formatCurrency(Math.min(savings, meta.montoObjetivo))}</span>
+            <span class="meta-card__current">${formatCurrency(allocation.montoAsignado)}</span>
             <span class="meta-card__separator">/</span>
-            <span class="meta-card__goal">${formatCurrency(meta.montoObjetivo)}</span>
+            <span class="meta-card__goal">${formatCurrency(allocation.montoObjetivo)}</span>
         </div>
         <div class="meta-progress-bar" role="progressbar" aria-valuenow="${Math.round(progress)}" aria-valuemin="0" aria-valuemax="100" aria-label="Progreso ${Math.round(progress)}%">
             <div class="meta-progress-fill" style="width:${progress}%;background:${progressColor};"></div>
@@ -170,19 +195,22 @@ function metaCardHtml(meta, savings) {
                 : `<span class="meta-card__status">Faltan ${formatCurrency(faltante)}</span>`
             }
         </div>
-        ${meta.descripcion ? `<p class="meta-card__desc">${escapeHtml(meta.descripcion)}</p>` : ''}
+        ${allocation.descripcion ? `<p class="meta-card__desc">${escapeHtml(allocation.descripcion)}</p>` : ''}
     </article>`;
 }
 
 function openMetaForm() {
-    const categoryOptions = META_CATEGORIES.map(c =>
-        `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`
+    const state = getState();
+    const categoryOptions = optionsHtml(state.categories, null, 'Selecciona una categoría');
+    const priorityOptions = META_PRIORITY_OPTIONS.map(p =>
+        `<option value="${escapeHtml(p.value)}">${escapeHtml(p.label)}</option>`
     ).join('');
 
     const body = `<div class="form-grid">
         ${field({ label: 'Nombre de la meta', name: 'nombre', control: '<input id="field-nombre" data-field="nombre" name="nombre" type="text" maxlength="120" placeholder="Ej. Comprar iPhone" />' })}
         ${field({ label: 'Monto objetivo (S/)', name: 'montoObjetivo', control: '<input id="field-montoObjetivo" data-field="montoObjetivo" name="montoObjetivo" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" />' })}
-        ${field({ label: 'Categoría', name: 'categoria', control: `<select id="field-categoria" data-field="categoria" name="categoria"><option value="">Selecciona una categoría</option>${categoryOptions}</select>` })}
+        ${field({ label: 'Categoría', name: 'categoriaId', control: `<select id="field-categoriaId" data-field="categoriaId" name="categoriaId"><option value="">Selecciona una categoría</option>${categoryOptions}</select>` })}
+        ${field({ label: 'Prioridad', name: 'prioridad', control: `<select id="field-prioridad" data-field="prioridad" name="prioridad">${priorityOptions}</select>` })}
         ${field({ label: 'Descripción (opcional)', name: 'descripcion', control: '<input id="field-descripcion" data-field="descripcion" name="descripcion" type="text" maxlength="200" placeholder="Detalles adicionales..." />' })}
     </div>`;
 
@@ -195,26 +223,30 @@ function openMetaForm() {
             const value = (name) => overlay.querySelector(`[data-field="${name}"]`)?.value ?? '';
             const nombre = value('nombre').trim();
             const montoObjetivo = Number(value('montoObjetivo'));
-            const categoria = value('categoria');
+            const categoriaId = value('categoriaId');
+            const prioridad = value('prioridad');
             const descripcion = value('descripcion').trim();
 
             const errors = {};
             if (!nombre) errors.nombre = 'El nombre es obligatorio.';
             if (!montoObjetivo || montoObjetivo <= 0) errors.montoObjetivo = 'El monto debe ser mayor que 0.';
-            if (!categoria) errors.categoria = 'Selecciona una categoría.';
+            if (!categoriaId) errors.categoriaId = 'Selecciona una categoría.';
+            if (!prioridad) errors.prioridad = 'Selecciona una prioridad.';
 
             if (Object.keys(errors).length) {
                 setFieldErrors(overlay, errors);
                 return false;
             }
 
-            const nuevaMeta = await dataService.createMeta({ nombre, montoObjetivo, categoria, descripcion });
+            const nuevaMeta = await dataService.createMeta({ nombre, montoObjetivo, categoriaId, prioridad, descripcion });
             metas.push(nuevaMeta);
 
             const { movements } = getState();
             const { savings } = calculateTotals(movements);
-            if (savings >= nuevaMeta.montoObjetivo && !nuevaMeta.alcanzada) {
-                await markGoalReached(nuevaMeta, savings);
+            const allocations = calculateGoalAllocations(metas, savings);
+            const allocation = allocations.find(a => a.id === nuevaMeta.id);
+            if (allocation && allocation.alcanzada && !nuevaMeta.alcanzada) {
+                await markGoalReached(allocation);
             }
 
             renderMetas();
@@ -241,3 +273,9 @@ function openDeleteMetaConfirm(meta) {
         },
     });
 }
+
+/**
+ * Esta función ya no se usa directamente.
+ * El flujo de reclamo ahora usa sessionStorage para comunicar
+ * entre notifications.js y expenses.js.
+ */

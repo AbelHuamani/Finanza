@@ -108,3 +108,52 @@ export function yearTotals(movements, year) {
 export function availableYears(movements) {
     return [...new Set(movements.map((movement) => getYear(movement.date)))].sort();
 }
+
+/**
+ * Distribuye el ahorro entre las metas según prioridad.
+ * Orden: URGENTE → MEDIA → BAJA
+ * Empate: creado_en ASC, id ASC
+ *
+ * @param {Array} metas - Array de metas con { id, montoObjetivo, prioridad, creadoEn }
+ * @param {number} savings - Ahorro total (Ingresos - Gastos)
+ * @returns {Array} - Metas con datos de asignación: { montoAsignado, porcentaje, montoFaltante, alcanzada, ...meta }
+ */
+export function calculateGoalAllocations(metas, savings) {
+    const PRIORITY_ORDER = { URGENTE: 0, MEDIA: 1, BAJA: 2 };
+
+    // Clonar metas para no mutar el original
+    const sortedMetas = [...metas].sort((a, b) => {
+        const priorityDiff = PRIORITY_ORDER[a.prioridad] - PRIORITY_ORDER[b.prioridad];
+        if (priorityDiff !== 0) return priorityDiff;
+
+        // Same priority: sort by creado_en ASC, then id ASC
+        const dateA = new Date(a.creadoEn || 0).getTime();
+        const dateB = new Date(b.creadoEn || 0).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+
+        return (a.id || 0) - (b.id || 0);
+    });
+
+    let remainingSavings = savings;
+    const allocations = [];
+
+    for (const meta of sortedMetas) {
+        const objetivo = meta.montoObjetivo || 0;
+        const asignado = Math.min(remainingSavings, objetivo);
+        const faltante = Math.max(0, objetivo - asignado);
+        const porcentaje = objetivo > 0 ? (asignado / objetivo) * 100 : 0;
+        const alcanzada = asignado >= objetivo;
+
+        allocations.push({
+            ...meta,
+            montoAsignado: asignado,
+            porcentaje,
+            montoFaltante: faltante,
+            alcanzada,
+        });
+
+        remainingSavings -= asignado;
+    }
+
+    return allocations;
+}

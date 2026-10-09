@@ -26,8 +26,22 @@ const dom = {
 const sectionsById = new Map(SECTIONS.map((section) => [section.id, section]));
 
 function sectionFromHash() {
-    const id = window.location.hash.replace("#", "");
-    return sectionsById.has(id) ? id : DEFAULT_SECTION;
+    const hash = window.location.hash.replace("#", "");
+    const [id, queryString] = hash.split("?");
+    return {
+        id: sectionsById.has(id) ? id : DEFAULT_SECTION,
+        params: parseQueryString(queryString),
+    };
+}
+
+function parseQueryString(queryString) {
+    if (!queryString) return {};
+    const params = new URLSearchParams(queryString);
+    const result = {};
+    for (const [key, value] of params) {
+        result[key] = value;
+    }
+    return result;
 }
 
 function renderNav(id) {
@@ -49,12 +63,17 @@ function renderHeading(section) {
     document.title = `Finanza — ${section.title}`;
 }
 
-export function navigate(id, { updateHash = true } = {}) {
+export function navigate(id, { updateHash = true, params = {} } = {}) {
     const section = sectionsById.get(id);
     if (!section) return;
 
-    if (updateHash && window.location.hash !== `#${id}`) {
-        window.location.hash = id;
+    const queryString = Object.keys(params).length > 0
+        ? '?' + new URLSearchParams(params).toString()
+        : '';
+    const fullHash = `#${id}${queryString}`;
+
+    if (updateHash && window.location.hash !== fullHash) {
+        window.location.hash = fullHash;
         return;
     }
 
@@ -62,8 +81,13 @@ export function navigate(id, { updateHash = true } = {}) {
     renderSection(id);
     renderNav(id);
     renderHeading(section);
-    setState({ activeSection: id });
+    setState({ activeSection: id, navigationParams: params });
     window.scrollTo({ top: 0, behavior: "auto" });
+
+    // Dispatch event for modules to react to navigation with params
+    document.dispatchEvent(new CustomEvent('app:navigate', {
+        detail: { section: id, params }
+    }));
 }
 
 function openActionMenu() {
@@ -93,7 +117,10 @@ function setupNavigation() {
         navigate(link.dataset.section);
     });
 
-    window.addEventListener("hashchange", () => navigate(sectionFromHash(), { updateHash: false }));
+    window.addEventListener("hashchange", () => {
+        const { id, params } = sectionFromHash();
+        navigate(id, { updateHash: false, params });
+    });
 }
 
 function setupActions() {

@@ -1,6 +1,7 @@
 import { APP_ACTIONS, MOVEMENT_TYPES } from "../constants.js";
-import { addMovement, addMovements, editMovement, removeMovement } from "../actions.js";
+import { addMovement, addMovements, editMovement, removeMovement, claimMeta } from "../actions.js";
 import { getState } from "../state.js";
+import { dataService } from "../services/dataService.js";
 import { openModal, setFieldErrors } from "../components/modal.js";
 import { showToast } from "../components/toast.js";
 import { field, optionsHtml } from "../components/forms.js";
@@ -18,7 +19,9 @@ export function mount() {
         const { action, id } = event.detail;
         const state = getState();
 
-        if (action === APP_ACTIONS.NEW_EXPENSE) return openExpenseForm();
+        if (action === APP_ACTIONS.NEW_EXPENSE) {
+            return openExpenseForm();
+        }
         if (action === APP_ACTIONS.NEW_BULK_EXPENSE) return openBulkExpenseForm();
 
         if (action === APP_ACTIONS.EDIT_MOVEMENT) {
@@ -34,21 +37,50 @@ export function mount() {
             if (movement) openDeleteConfirm(movement);
         }
     });
+
+    // Listen for navigation changes to open modal automatically
+    document.addEventListener('app:navigate', (event) => {
+        const { section, params } = event.detail;
+        if (section === 'movimientos' && params.modal === 'gasto' && params.metaId) {
+            // Fetch meta data and open form
+            dataService.getMetas().then(metas => {
+                const meta = metas.find(m => m.id === params.metaId);
+                if (meta) {
+                    const { categories, paymentMethods } = getState();
+                    const defaultPaymentMethod = paymentMethods[0]?.id || null;
+
+                    const preloadedData = {
+                        description: meta.nombre,
+                        amount: meta.montoObjetivo,
+                        categoryId: meta.categoriaId,
+                        subcategoryId: null,
+                        paymentMethod: defaultPaymentMethod,
+                        date: new Date().toISOString().split('T')[0],
+                        note: meta.descripcion,
+                        metaId: meta.id,
+                    };
+                    openExpenseForm(null, preloadedData);
+                }
+            });
+        }
+    });
 }
 
 /* -------------------- Gasto individual -------------------- */
 
-export function openExpenseForm(movement = null) {
+export function openExpenseForm(movement = null, preloadedData = null) {
     const editing = Boolean(movement);
+    const isClaimMode = Boolean(preloadedData?.metaId);
     const state = getState();
     const value = {
-        description: movement?.description ?? "",
-        amount: movement?.amount ?? "",
-        categoryId: movement?.categoryId ?? null,
-        subcategoryId: movement?.subcategoryId ?? null,
-        paymentMethod: movement?.paymentMethod ?? state.paymentMethods[0]?.id ?? null,
-        date: movement?.date ?? todayISO(),
-        note: movement?.note ?? "",
+        description: preloadedData?.description ?? movement?.description ?? "",
+        amount: preloadedData?.amount ?? movement?.amount ?? "",
+        categoryId: preloadedData?.categoryId ?? movement?.categoryId ?? null,
+        subcategoryId: preloadedData?.subcategoryId ?? movement?.subcategoryId ?? null,
+        paymentMethod: preloadedData?.paymentMethod ?? movement?.paymentMethod ?? state.paymentMethods[0]?.id ?? null,
+        date: preloadedData?.date ?? movement?.date ?? todayISO(),
+        note: preloadedData?.note ?? movement?.note ?? "",
+        metaId: preloadedData?.metaId ?? movement?.metaId ?? null,
     };
 
     const body = `<div class="form-grid">
@@ -57,25 +89,25 @@ export function openExpenseForm(movement = null) {
             name: "description",
             control: `<input id="field-description" data-field="description" name="description" type="text" maxlength="120" placeholder="Pasaje, almuerzo, recarga..." value="${escapeHtml(
                 value.description,
-            )}" />`,
+            )}" ${isClaimMode ? 'disabled' : ''} />`,
         })}
         ${field({
             label: "Monto (S/)",
             name: "amount",
             control: `<input id="field-amount" data-field="amount" name="amount" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" value="${escapeHtml(
                 value.amount,
-            )}" />`,
+            )}" ${isClaimMode ? 'disabled' : ''} />`,
         })}
         ${field({
             label: "Categoría",
             name: "categoryId",
-            control: `<select id="field-categoryId" data-field="categoryId" name="categoryId">${optionsHtml(
+            control: `<select id="field-categoryId" data-field="categoryId" name="categoryId" ${isClaimMode ? 'disabled' : ''}>${optionsHtml(
                 state.categories,
                 value.categoryId,
                 "Selecciona una categoría",
             )}</select>`,
         })}
-        ${subcategoryField(state, value.categoryId, value.subcategoryId)}
+        ${subcategoryField(state, value.categoryId, value.subcategoryId, isClaimMode)}
         ${field({
             label: "Método de pago",
             name: "paymentMethod",
@@ -95,8 +127,9 @@ export function openExpenseForm(movement = null) {
             name: "note",
             control: `<input id="field-note" data-field="note" name="note" type="text" maxlength="200" value="${escapeHtml(
                 value.note,
-            )}" />`,
+            )}" ${isClaimMode ? 'disabled' : ''} />`,
         })}
+        <input type="hidden" id="field-metaId" data-field="metaId" name="metaId" value="${escapeHtml(value.metaId || '')}" />
     </div>`;
 
     openModal({
@@ -106,10 +139,12 @@ export function openExpenseForm(movement = null) {
         size: "md",
         onReady: (overlay) => {
             const categorySelect = overlay.querySelector('[data-field="categoryId"]');
-            categorySelect.addEventListener("change", () => {
-                const current = overlay.querySelector("#subcategoryField");
-                if (current) current.outerHTML = subcategoryField(getState(), categorySelect.value, null);
-            });
+            if (categorySelect && !isClaimMode) {
+                categorySelect.addEventListener("change", () => {
+                    const current = overlay.querySelector("#subcategoryField");
+                    if (current) current.outerHTML = subcategoryField(getState(), categorySelect.value, null);
+                });
+            }
         },
         onSubmit: async (overlay) => {
             const input = readExpenseForm(overlay);
@@ -120,28 +155,39 @@ export function openExpenseForm(movement = null) {
                 await editMovement(movement.id, input);
                 showToast("Gasto actualizado correctamente.");
             } else {
-                await addMovement(input);
-                showToast("Gasto registrado correctamente.");
+                // Check if this is a meta claim
+                if (input.metaId) {
+                    await claimMeta(input.metaId, input);
+                    showToast("Gasto registrado y meta reclamada correctamente.");
+                } else {
+                    await addMovement(input);
+                    showToast("Gasto registrado correctamente.");
+                }
             }
             return true;
         },
     });
 }
 
-function subcategoryField(state, categoryId, selectedId) {
+function subcategoryField(state, categoryId, selectedId, isClaimMode = false) {
     const subcategories = state.subcategories.filter((sub) => sub.categoryId === categoryId);
     const options = optionsHtml(subcategories, selectedId, subcategories.length ? "Sin subcategoría" : "—");
     return `<div class="field" id="subcategoryField">
         <label class="field__label" for="field-subcategoryId">Subcategoría (opcional)</label>
         <select id="field-subcategoryId" data-field="subcategoryId" name="subcategoryId" ${
-            subcategories.length ? "" : "disabled"
-        }>${options}</select>
+            subcategories.length || isClaimMode ? "" : "disabled"
+        } ${isClaimMode ? 'disabled' : ''}>${options}</select>
         <p class="field__error" data-field-error></p>
     </div>`;
 }
 
 function readExpenseForm(overlay) {
-    const value = (name) => overlay.querySelector(`[data-field="${name}"]`)?.value ?? "";
+    const value = (name) => {
+        const field = overlay.querySelector(`[data-field="${name}"]`);
+        if (!field) return "";
+        // Read value directly - works for both enabled and disabled fields
+        return field.value ?? "";
+    };
     return {
         type: MOVEMENT_TYPES.EXPENSE,
         description: value("description").trim(),
@@ -151,6 +197,7 @@ function readExpenseForm(overlay) {
         paymentMethod: value("paymentMethod") || null,
         date: value("date"),
         note: value("note").trim(),
+        metaId: value("metaId") || null,
     };
 }
 

@@ -16,7 +16,10 @@ router.post('/', async (req, res, next) => {
         if (!Number.isFinite(metaId) || metaId <= 0) throw httpError(400, 'metaId inválido.');
         const mensaje = String(req.body.mensaje ?? '').trim();
         if (!mensaje) throw httpError(400, 'El mensaje es obligatorio.');
-        res.status(201).json(await createNotificacion({ metaId, mensaje }));
+        const tipo = String(req.body.tipo ?? 'META_ALCANZADA').trim();
+        const VALID_TYPES = new Set(['META_ALCANZADA', 'OPORTUNIDAD_DISPONIBLE', 'PROGRESO_PARCIAL', 'META_RECLAMADA']);
+        if (!VALID_TYPES.has(tipo)) throw httpError(400, 'Tipo de notificación inválido.');
+        res.status(201).json(await createNotificacion({ metaId, mensaje, tipo }));
     } catch (error) { next(error); }
 });
 

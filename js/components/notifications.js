@@ -1,5 +1,8 @@
 import { dataService } from '../services/dataService.js';
 import { qs } from '../utils/dom.js';
+import { NOTIFICATION_TYPES } from '../constants.js';
+import { navigate } from '../app.js';
+import { showToast } from './toast.js';
 
 /**
  * Sistema de notificaciones de metas alcanzadas.
@@ -161,19 +164,90 @@ function renderPanelContent() {
         <ul class="notif-panel__list" role="list">
             ${isEmpty
                 ? '<li class="notif-panel__empty">No tienes notificaciones.</li>'
-                : notificaciones.map(n => `
-                    <li class="notif-panel__item${n.leida ? ' notif-panel__item--read' : ''}">
-                        <span class="notif-panel__icon" aria-hidden="true">🎉</span>
-                        <div class="notif-panel__body">
-                            <p class="notif-panel__msg">${escapeText(n.mensaje)}</p>
-                            <time class="notif-panel__time">${formatTime(n.creadoEn)}</time>
-                        </div>
-                        ${!n.leida ? '<span class="notif-panel__dot" aria-label="No leída"></span>' : ''}
-                    </li>`).join('')
+                : notificaciones.map(n => renderNotificationItem(n)).join('')
             }
         </ul>`;
 
     panel.querySelector('.notif-panel__close')?.addEventListener('click', closePanel);
+
+    // Attach event listeners for action buttons
+    panel.querySelectorAll('[data-notif-action]').forEach(btn => {
+        btn.addEventListener('click', handleNotificationAction);
+    });
+}
+
+function renderNotificationItem(notif) {
+    const icon = getNotificationIcon(notif.tipo);
+    const actionButtons = getActionButtons(notif);
+
+    return `
+        <li class="notif-panel__item${notif.leida ? ' notif-panel__item--read' : ''}" data-notif-id="${escapeText(notif.id)}">
+            <span class="notif-panel__icon" aria-hidden="true">${icon}</span>
+            <div class="notif-panel__body">
+                <p class="notif-panel__msg">${escapeText(notif.mensaje)}</p>
+                <time class="notif-panel__time">${formatTime(notif.creadoEn)}</time>
+                ${actionButtons}
+            </div>
+            ${!notif.leida ? '<span class="notif-panel__dot" aria-label="No leída"></span>' : ''}
+        </li>
+    `;
+}
+
+function getNotificationIcon(tipo) {
+    switch (tipo) {
+        case NOTIFICATION_TYPES.META_ALCANZADA:
+            return '🎉';
+        case NOTIFICATION_TYPES.OPORTUNIDAD_DISPONIBLE:
+            return '💡';
+        case NOTIFICATION_TYPES.PROGRESO_PARCIAL:
+            return '📊';
+        case NOTIFICATION_TYPES.META_RECLAMADA:
+            return '✅';
+        default:
+            return '🔔';
+    }
+}
+
+function getActionButtons(notif) {
+    const buttons = [];
+
+    if (notif.tipo === NOTIFICATION_TYPES.META_ALCANZADA) {
+        buttons.push(`<button type="button" class="btn btn--small btn--primary" data-notif-action="claim" data-meta-id="${escapeText(notif.metaId)}">Reclamar</button>`);
+    }
+
+    if (notif.tipo === NOTIFICATION_TYPES.OPORTUNIDAD_DISPONIBLE) {
+        buttons.push(`<button type="button" class="btn btn--small btn--primary" data-notif-action="accept" data-meta-id="${escapeText(notif.metaId)}">Aceptar meta</button>`);
+    }
+
+    if (buttons.length === 0) return '';
+
+    return `<div class="notif-panel__actions">${buttons.join('')}</div>`;
+}
+
+async function handleNotificationAction(event) {
+    const btn = event.target.closest('[data-notif-action]');
+    if (!btn) return;
+
+    const action = btn.dataset.notifAction;
+    const metaId = btn.dataset.metaId;
+
+    if (action === 'claim') {
+        // Reclamar meta: navegar a movimientos con parámetros para abrir modal automáticamente
+        closePanel();
+        navigate('movimientos', { params: { modal: 'gasto', metaId } });
+    } else if (action === 'accept') {
+        // Aceptar meta: priorizarla
+        try {
+            await dataService.updateMeta(metaId, { prioridad: 'URGENTE' });
+            showToast('Meta priorizada correctamente.');
+            closePanel();
+            // Recargar metas
+            document.dispatchEvent(new CustomEvent('app:data-ready'));
+        } catch (error) {
+            console.error('[finanza] Error al priorizar meta:', error);
+            showToast('Error al priorizar meta.', 'error');
+        }
+    }
 }
 
 async function markAllRead() {

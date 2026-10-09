@@ -55,6 +55,9 @@ const toMeta = (meta) => ({
     ...meta,
     id: String(meta.id),
     montoObjetivo: Number(meta.montoObjetivo),
+    categoriaId: meta.categoriaId ? String(meta.categoriaId) : null,
+    prioridad: meta.prioridad ?? 'MEDIA',
+    estado: meta.estado ?? 'ACTIVA',
     alcanzada: Boolean(meta.alcanzada),
     activa: Boolean(meta.activa),
 });
@@ -104,12 +107,33 @@ export const apiDataService = {
         };
     },
 
+    /**
+     * Reclama una meta creando un movimiento de gasto asociado.
+     * Devuelve { movement, meta, notificacion }.
+     */
+    reclamarMeta: async (id, movementInput) => {
+        const result = await request(`/metas/${encodeURIComponent(id)}/reclamar`, {
+            method: 'POST',
+            body: JSON.stringify(movementInput),
+        });
+        return {
+            movement: toMovement(result.movement),
+            meta: toMeta(result.meta),
+            notificacion: result.notificacion
+                ? { ...result.notificacion, id: String(result.notificacion.id), metaId: String(result.notificacion.metaId) }
+                : null,
+        };
+    },
+
     getNotificaciones: async () => {
         const list = await request('/notificaciones');
         return list.map(n => ({ ...n, id: String(n.id), metaId: String(n.metaId) }));
     },
-    createNotificacion: async ({ metaId, mensaje }) => {
-        const n = await request('/notificaciones', { method: 'POST', body: JSON.stringify({ metaId: Number(metaId), mensaje }) });
+    createNotificacion: async ({ metaId, mensaje, tipo = 'META_ALCANZADA' }) => {
+        const n = await request('/notificaciones', {
+            method: 'POST',
+            body: JSON.stringify({ metaId: Number(metaId), mensaje, tipo }),
+        });
         return { ...n, id: String(n.id), metaId: String(n.metaId) };
     },
     markNotificacionesLeidas: () => request('/notificaciones/leer', { method: 'PATCH' }),
