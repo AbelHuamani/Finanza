@@ -176,7 +176,7 @@ function subcategoryField(state, categoryId, selectedId, isClaimMode = false) {
         <label class="field__label" for="field-subcategoryId">Subcategoría (opcional)</label>
         <select id="field-subcategoryId" data-field="subcategoryId" name="subcategoryId" ${
             subcategories.length || isClaimMode ? "" : "disabled"
-        } ${isClaimMode ? 'disabled' : ''}>${options}</select>
+        } ${isClaimMode ? '' : ''}>${options}</select>
         <p class="field__error" data-field-error></p>
     </div>`;
 }
